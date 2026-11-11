@@ -1,5 +1,5 @@
-# Имя Worker должно совпадать с именем проекта в Cloudflare (sat11)
-name = "sat11"
+# Имя Worker совпадает с действующим проектом Cloudflare.
+name = "sat12"
 main = "worker/index.mjs"
 compatibility_date = "2026-10-30"
 compatibility_flags = ["nodejs_compat"]
@@ -8,11 +8,11 @@ compatibility_flags = ["nodejs_compat"]
 directory = "./public"
 binding = "ASSETS"
 
-# database_id СПЕЦИАЛЬНО не указан: Wrangler 4.45+ при `wrangler deploy`
-# сам создаёт (или находит) базу D1 и подставляет ID. Таблицы Worker создаёт сам.
+# Существующая база sat12; сохраняем данные пользователей.
 [[d1_databases]]
 binding = "DB"
 database_name = "sat-platform-db"
+database_id = "595f1b8c-adca-46fc-8735-2c87643e2e30"
 
 [vars]
 PAYMENT_MODE = "manual"
