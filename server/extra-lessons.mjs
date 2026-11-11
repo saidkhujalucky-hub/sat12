@@ -122,5 +122,29 @@ const rows=[
  T(['Ближайшее существительное может не быть главным подлежащим.'],['Eng yaqin ot asosiy ega bo‘lmasligi mumkin.'],['The nearest noun may not be the head subject.']), 'The collection of rare maps ___ on display. Which verb agrees?', ['are','were','is','have been'],2]
 ];
 
+
+// Additional focused lessons for skills that were only briefly covered in broad topics.
+rows.push(
+ ['absolutevalue','Absolute value equations','math',T('Модуль числа и уравнения','Modul va tenglamalar','Absolute value equations'),
+ T('Модуль — расстояние от нуля, поэтому он неотрицателен.','Modul — noldan masofa, shuning uchun manfiy emas.','Absolute value is distance from zero and cannot be negative.'),
+ T(['|x| = a при a ≥ 0 означает x = a или x = −a.','Уравнение |x| = a при a < 0 решений не имеет.'],['a ≥ 0 bo‘lsa |x| = a dan x = a yoki x = −a.','a < 0 bo‘lsa |x| = a yechimga ega emas.'],['For a ≥ 0, |x| = a means x = a or x = −a.','For a < 0, |x| = a has no solution.']),
+ T(['|x − 2| = 3: x − 2 = 3 или x − 2 = −3.','Ответ: x = 5 или x = −1.'],['|x − 2| = 3: x − 2 = 3 yoki x − 2 = −3.','Javob: x = 5 yoki x = −1.'],['|x − 2| = 3 gives x − 2 = 3 or x − 2 = −3.','The solutions are x = 5 and x = −1.']),
+ T(['Не теряй отрицательную ветвь.'],['Manfiy holatni unutmang.'],['Do not omit the negative case.']), 'What is the sum of the solutions to |x − 2| = 3?', ['−2','0','4','6'],2],
+ ['radicalrational','Radical and rational equations','math',T('Корни и дробные уравнения','Ildizli va kasrli tenglamalar','Radical and rational equations'),
+ T('Проверяй допустимые значения: знаменатель не равен нулю, а квадратный корень в действительных числах определён для неотрицательного подкоренного выражения.','Ruxsat etilgan qiymatlarni tekshiring: maxraj nol bo‘lmaydi, haqiqiy kvadrat ildiz ostidagi ifoda manfiy emas.','Check the domain: denominators cannot be zero and real square roots require nonnegative radicands.'),
+ T(['После возведения в квадрат обязательно проверяй найденные корни в исходном уравнении.'],['Kvadratga oshirgandan so‘ng ildizlarni asl tenglamada tekshiring.'],['After squaring, check each candidate in the original equation.']),
+ T(['√(x + 5) = x − 1 требует x ≥ 1.','Возводим в квадрат: x + 5 = (x − 1)², получаем x = 4 или −1.','Только x = 4 подходит исходному уравнению.'],['√(x + 5) = x − 1 uchun x ≥ 1.','Kvadratga oshirib x = 4 yoki −1 olamiz.','Asl tenglamaga faqat x = 4 mos keladi.'],['√(x + 5) = x − 1 requires x ≥ 1.','Squaring gives x = 4 or −1.','Only x = 4 satisfies the original equation.']),
+ T(['Возведение в квадрат может добавить посторонний корень.'],['Kvadratga oshirish ortiqcha ildiz berishi mumkin.'],['Squaring can introduce an extraneous solution.']), 'Which value solves √(x + 5) = x − 1?', ['−1','1','4','5'],2],
+ ['nonlinearsystems','Nonlinear systems','math',T('Системы с нелинейными уравнениями','Chiziqsiz tenglamali sistemalar','Nonlinear systems'),
+ T('Решение системы — точка, удовлетворяющая обоим уравнениям; на графике это точка пересечения.','Sistema yechimi ikkala tenglamani qanoatlantiradi; grafikda bu kesishish nuqtasi.','A solution satisfies both equations; graphically it is an intersection.'),
+ T(['Приравняй выражения для y или подставь одно уравнение в другое.','Проверь каждую найденную пару.'],['y ifodalarini tenglashtiring yoki o‘rniga qo‘ying.','Har bir juftlikni tekshiring.'],['Set expressions for y equal or use substitution.','Check every resulting pair.']),
+ T(['y = x² и y = x + 2: x² = x + 2.','(x − 2)(x + 1) = 0, поэтому точки (2, 4) и (−1, 1).'],['y = x² va y = x + 2: x² = x + 2.','(x − 2)(x + 1) = 0, nuqtalar (2, 4) va (−1, 1).'],['For y = x² and y = x + 2, set x² = x + 2.','Factoring gives intersections (2, 4) and (−1, 1).']),
+ T(['Значение x само по себе ещё не является точкой.'],['x qiymatining o‘zi nuqta emas.'],['An x-value alone is not an ordered pair.']), 'How many intersection points do y = x² and y = x + 2 have?', ['0','1','2','3'],2],
+ ['unitcircle','Unit circle and radians','math',T('Единичная окружность и радианы','Birlik aylana va radianlar','Unit circle and radians'),
+ T('На единичной окружности точке угла θ соответствуют координаты (cos θ, sin θ).','Birlik aylanada θ burchak nuqtasi koordinatalari (cos θ, sin θ).','On the unit circle, the point at angle θ has coordinates (cos θ, sin θ).'),
+ T(['180° = π радиан; 90° = π/2.','Знаки координат зависят от четверти.'],['180° = π radian; 90° = π/2.','Koordinatalar ishorasi chorakka bog‘liq.'],['180° = π radians; 90° = π/2.','Coordinate signs depend on the quadrant.']),
+ T(['Угол 90° равен π/2 радиан и соответствует точке (0, 1).','Поэтому cos(π/2) = 0, sin(π/2) = 1.'],['90° = π/2 radian va nuqta (0, 1).','Demak cos(π/2) = 0, sin(π/2) = 1.'],['90° is π/2 radians and corresponds to (0, 1).','Therefore cos(π/2) = 0 and sin(π/2) = 1.']),
+ T(['Не путай градусы и радианы при вводе в калькулятор.'],['Kalkulyatorda gradus va radianni adashtirmang.'],['Check whether the calculator is in degrees or radians.']), 'What is sin(π/2)?', ['−1','0','1','2'],2]
+);
 export const extraLessons=rows.map(([id,topic,section,title,explain,rules,example,mistakes,prompt,options,answer])=>({id,topic,section,title,explain,rules,example,mistakes,minutes:10,source:'Original SAT Practice lesson',ready:true,practice:{prompt,options,answer,explanation:T([...rules.ru,...example.ru].join(' '),[...rules.uz,...example.uz].join(' '),[...rules.en,...example.en].join(' '))}}));
 export const extraTopics=Object.fromEntries(rows.map(([id,topic])=>[topic,id]));
