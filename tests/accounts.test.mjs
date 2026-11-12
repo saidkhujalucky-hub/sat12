@@ -9,7 +9,7 @@ const memory=()=>{const docs=new Map();return {get:async(n,id)=>structuredClone(
 test('every catalog topic has a localized lesson, worked example, and practice',()=>{
  const unique=new Set();
  for(const v of catalog.variants)for(const section of Object.values(v.sections))for(const branch of Object.values(section))for(const q of branch){const id=lessonForRef(q);assert.ok(id,q.topic);unique.add(q.topic.trim());assert.ok(lessons.some(l=>l.id===id));}
- assert.equal(unique.size,29);assert.equal(new Set(lessons.map(l=>l.id)).size,30);
+ assert.equal(unique.size,29);assert.equal(new Set(lessons.map(l=>l.id)).size,lessons.length);
  for(const l of lessons){for(const lang of ['ru','uz','en']){assert.ok(l.title[lang]);assert.ok(l.explain[lang].length>40);assert.ok(l.rules[lang].length);assert.ok(l.example[lang].length>=2);assert.ok(l.mistakes[lang].length);assert.ok(l.practice.explanation[lang]);}assert.equal(l.practice.options.length,4);assert.ok(l.practice.answer>=0&&l.practice.answer<4);}
 });
 test('recovery is single use, revokes existing auth versions, and rotating invalidates the old code',async()=>{
@@ -51,3 +51,4 @@ test('official questions reuse persistent cache after an upstream outage',async(
   await store.change('question_cache',id,row=>({...row,created:Date.now()-8*86400000}));assert.equal((await questionService({},store).load(id)).prompt,'Original question');
  }finally{globalThis.fetch=previous;}
 });
+

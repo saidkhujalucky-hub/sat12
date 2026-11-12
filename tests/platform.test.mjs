@@ -33,20 +33,18 @@ test('accounts, CORS, source removal and private assets',async()=>{
  const source=readFileSync(new URL('../public/official.js',import.meta.url),'utf8');assert.ok(source.includes('tel:+998955705566'));assert.ok(!source.includes('Авторские тренировочные варианты'));
 });
 
-test('free access is enforced on the server, no paid content in catalog or lesson index',async()=>{
- const c=await ok('/catalog');assert.equal(c.variants.length,10);assert.ok(c.variants[0].sections);assert.ok(!c.variants[1].sections);assert.equal(c.variants[1].locked,true);
- assert.equal((await req('/exams','POST',{variant:2})).status,403);
- assert.equal((await req('/plan')).status,403);assert.equal((await req('/settings','PUT',{minutes:20})).status,403);
- const ls=await ok('/lessons');assert.equal(ls.length,30);assert.ok(ls.every(l=>!l.rules&&!l.explain&&!l.practice));assert.equal(ls.filter(l=>!l.locked).length,2);
- assert.equal((await req('/lessons/slope')).status,403);assert.equal((await req('/drills','POST',{skill:'slope'})).status,403);
- assert.equal((await ok('/lessons/linear')).id,'linear');
- const guest=await ok('/guest','POST',{},'');assert.ok(guest.token);assert.equal((await req('/exams','POST',{variant:2},guest.token)).status,401);assert.equal((await req('/billing/orders','POST',{idempotencyKey:'guest-attempt-0001'},guest.token)).status,401);
- assert.ok((await ok('/exams','POST',{variant:1},guest.token)).id);
+test('all materials are available without a subscription',async()=>{
+ const c=await ok('/catalog');assert.equal(c.variants.length,10);assert.ok(c.variants.every(v=>!v.locked&&v.sections));
+ assert.ok((await ok('/exams','POST',{variant:2})).id);assert.ok(await ok('/plan'));await ok('/settings','PUT',{minutes:20});
+ const ls=await ok('/lessons');assert.equal(ls.length,34);assert.ok(ls.every(l=>!l.locked&&!l.practice));
+ assert.equal((await ok('/lessons/slope')).id,'slope');assert.ok((await ok('/drills','POST',{skill:'slope'})).id);
+ const guest=await ok('/guest','POST',{},'');assert.ok((await ok('/exams','POST',{variant:2},guest.token)).id);
+ assert.equal((await req('/billing/orders','POST',{idempotencyKey:'no-payment-order'},guest.token)).status,403);
 });
 
 test('manual orders cannot self-activate; owner approval is idempotent; cross-user orders stay private',async()=>{
- const first=await ok('/billing/orders','POST',{idempotencyKey:'initial-order-0001',price:1,days:99999});assert.equal(first.price,19000);assert.equal(first.days,30);assert.equal(first.state,0);
- assert.equal((await ok('/billing/orders','POST',{idempotencyKey:'initial-order-0001'})).id,first.id);
+ const bill=billing(store,{PAYMENT_MODE:'manual'}), u=await store.get('users',uid);const first=await bill.order(u,'en','initial-order-0001');assert.equal(first.price,19000);assert.equal(first.days,30);assert.equal(first.state,0);
+ assert.equal((await bill.order(u,'en','initial-order-0001')).id,first.id);
  assert.equal((await ok('/billing/subscription')).active,false);
  assert.equal((await req('/billing/orders/'+first.id+'/demo','POST',{success:true})).status,404);
  const other=await ok('/auth/register','POST',{email:'other@example.com',name:'Other',password:'another-long-password'});
@@ -104,13 +102,12 @@ test('official-bank drills, lesson completion, reason/report persistence and 1/3
  assert.equal((await req('/reports','POST',{kind:'question',materialId:'fake-id',message:'Unknown question'})).status,400);
 });
 
-test('expired Premium blocks previously-created paid exams, lessons and practice; free exam stays available',async()=>{
+test('access remains open when a previous subscription expires',async()=>{
  const a=await ok('/exams','POST',{variant:3});
  const order=(await store.list('orders',{userId:uid})).find(o=>o.state===2);await store.change('orders',order.id,o=>({...o,performTime:Date.now()-31*86400000}));
  assert.equal((await ok('/billing/subscription')).active,false);
- assert.equal((await req('/exams/'+a.id)).status,403);assert.equal((await req('/lessons/slope')).status,403);
- assert.equal((await ok('/progress')).premiumLocked,true);assert.deepEqual((await ok('/progress')).topics,[]);
- assert.ok((await ok('/exams','POST',{variant:1})).id);
+ assert.ok(await ok('/exams/'+a.id));assert.equal((await ok('/lessons/slope')).id,'slope');
+ assert.equal((await ok('/progress')).premiumLocked,false);
 });
 
 test('Payme authentication, amounts, duplicate IDs, concurrent performs, timeout, cancellation and statement',async()=>{
@@ -151,3 +148,4 @@ test('demo success and cancellation are explicit and idempotent; real payment mo
  const second=await b.order(u,'en','demo-renew-order001');await b.demo(second.id,u.id,true);assert.equal((await b.subscription(u.id)).until,until+30*86400000);
  await assert.rejects(b.demo(order.id,'different-user',true),/ORDER_NOT_FOUND/);
 });
+

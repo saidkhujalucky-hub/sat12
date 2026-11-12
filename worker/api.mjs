@@ -29,7 +29,7 @@ async function userOf(req,optional=false){
 async function publicUser(u){return{id:u.id,email:u.email||'',name:u.name,guest:!!u.guest,emailVerified:!!u.emailVerified,settings:u.settings||{},subscription:await bill.subscription(u.id)};}
 async function session(u){const token=randomBytes(32).toString('hex'),expires=Date.now()+30*day;await store.insert('sessions',{id:hash(token),userId:u.id,authVersion:u.authVersion||0,expires,expiresAt:new Date(expires)});return{token,user:await publicUser(u)};}
 const realUser=u=>{if(u.guest)fail(401,'LOGIN_REQUIRED');};
-const canLesson=async(u,id)=>{realUser(u);if(!bill.config().freeLessons.includes(id))await bill.requirePremium(u.id);};
+const canLesson=async(u,id)=>{realUser(u);};
 const sorted=xs=>xs.sort((a,b)=>(b.updatedAt||b.created||b.startedAt||0)-(a.updatedAt||a.created||a.startedAt||0));
 async function stats(uid){
   const ev=sorted(await store.list('events',{userId:uid})),groups=new Map();
@@ -40,11 +40,11 @@ async function progress(u){
   const attempts=sorted(await store.list('exams',{userId:u.id}));
   // Reconcile deterministic event IDs after a restart halfway through recording.
   for(const a of attempts.filter(a=>a.stage==='done'))await exams.ensureEvents(a);
-  const premium=(await bill.subscription(u.id)).active;
+  const premium=true;
   return{history:attempts.map(exams.summary),learned:await store.list('learned',{userId:u.id}),topics:premium?await stats(u.id):[],reviews:premium?(await store.list('reviews',{userId:u.id})).sort((a,b)=>a.due-b.due):[],premiumLocked:!premium,legacyHistory:[]};
 }
 async function plan(u){
-  realUser(u);await bill.requirePremium(u.id);
+  realUser(u);
   const p=await progress(u),mins=u.settings?.minutes||20,remaining=u.settings?.examDate?Math.ceil((Date.parse(u.settings.examDate+'T00:00:00+05:00')-Date.now())/day):null;
   const due=p.reviews.filter(r=>r.due<=Date.now()),weak=p.topics.filter(t=>t.lessonId&&t.status==='weak');
   const ids=[...new Set([...due.map(r=>r.skill),...weak.map(t=>t.lessonId),...lessons.filter(l=>!p.learned.some(v=>v.lesson===l.id)).map(l=>l.id)])];
@@ -89,7 +89,7 @@ async function api(req,res,path){
   if(path==='/billing/config'&&method==='GET')return json(res,200,bill.config());
   if(path==='/payments/payme'&&method==='POST')return json(res,200,await bill.rpc(d,req.headers.authorization));
   if(path==='/catalog'&&method==='GET'){
-    const u=await userOf(req,true),premium=u&&(await bill.subscription(u.id)).active;
+    const premium=true;
     return json(res,200,{modules:catalog.modules,variants:catalog.variants.map(v=>({id:v.id,locked:v.id!==1&&!premium,...(v.id===1||premium?{sections:v.sections}:{})}))});
   }
   if(path==='/guest'&&method==='POST'){
@@ -138,7 +138,7 @@ async function api(req,res,path){
   if(path==='/auth/logout'&&method==='POST'){await store.remove('sessions',hash(req.headers.authorization.replace(/^Bearer /,'')));return json(res,200,{ok:true});}
   if(path==='/billing/subscription'&&method==='GET')return json(res,200,await bill.subscription(u.id));
   if(path==='/billing/orders'&&method==='GET'){realUser(u);return json(res,200,sorted(await store.list('orders',{userId:u.id})).map(bill.view));}
-  if(path==='/billing/orders'&&method==='POST'){limit('orders:'+u.id,30);return json(res,201,await bill.order(u,d.lang,d.idempotencyKey));}
+  if(path==='/billing/orders'&&method==='POST')fail(403,'PAYMENTS_DISABLED');
   const om=path.match(/^\/billing\/orders\/([\w-]+)(?:\/(demo))?$/);
   if(om){realUser(u);if(om[2]&&method==='POST')return json(res,200,await bill.demo(om[1],u.id,d.success===true));if(method!=='GET')fail(405,'METHOD_NOT_ALLOWED');const o=await store.get('orders',om[1]);if(!o||o.userId!==u.id)fail(404,'ORDER_NOT_FOUND');return json(res,200,{...bill.view(o),subscription:await bill.subscription(u.id)});}
   if(path==='/exams'&&method==='POST')return json(res,201,await exams.create(u,Number(d.variant),d.mode||'exam'));
@@ -155,12 +155,12 @@ async function api(req,res,path){
   if(path==='/progress'&&method==='GET')return json(res,200,await progress(u));
   if(path==='/plan'&&method==='GET')return json(res,200,await plan(u));
   if(path==='/settings'&&method==='PUT'){
-    await bill.requirePremium(u.id);const minutes=Number(d.minutes);
+    const minutes=Number(d.minutes);
     if(!Number.isInteger(minutes)||minutes<10||minutes>180||d.examDate&&(!/^\d{4}-\d{2}-\d{2}$/.test(d.examDate)||!Number.isFinite(Date.parse(d.examDate))||new Date(d.examDate).toISOString().slice(0,10)!==d.examDate))fail(400,'INVALID_SETTINGS');
     await store.change('users',u.id,v=>({...v,settings:{minutes,examDate:d.examDate||null,lang:['ru','uz','en'].includes(d.lang)?d.lang:'ru'}}));return json(res,200,{ok:true});
   }
   if(path==='/lessons'&&method==='GET'){
-    const premium=(await bill.subscription(u.id)).active;
+    const premium=true;
     return json(res,200,lessons.map(({explain,rules,example,mistakes,practice,...rest})=>({...rest,locked:!premium&&!bill.config().freeLessons.includes(rest.id)})));
   }
   const lm=path.match(/^\/lessons\/([a-z]+)(?:\/(complete))?$/);
@@ -233,3 +233,4 @@ export async function handle(request,env){
  try {await api(req,res,path);}catch(e){if(!e.status)console.error(e);json(res,e.status||500,{error:e.status?e.message:'SERVER_ERROR'});}
  return new Response(JSON.stringify(res.data),{status:res.status,headers:{...res.headers,...cors(request,env)}});
 }
+

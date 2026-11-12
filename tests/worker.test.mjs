@@ -15,7 +15,7 @@ test('Cloudflare runtime: D1 init, duplicate email, training, exam protection, r
   const registration={email:'learner@example.test',name:'Learner',password:'correct-password-123'};
   const r=await request('/auth/register','POST',registration);assert.equal(r.status,201,JSON.stringify(r.data));const token=r.data.token;
   assert.equal((await request('/auth/register','POST',registration)).status,409);
-  const ls=await request('/lessons','GET',undefined,token);assert.equal(ls.data.length,30);assert.equal(ls.data.filter(l=>!l.locked).length,2);assert.ok(ls.data.every(l=>!l.practice));
+  const ls=await request('/lessons','GET',undefined,token);assert.equal(ls.data.length,34);assert.equal(ls.data.filter(l=>!l.locked).length,ls.data.length);assert.ok(ls.data.every(l=>!l.practice));
   const catalog=(await request('/catalog','GET',undefined,token)).data;
   const qid=catalog.variants[0].sections.rw.mixed[0].id;
   const exam=(await request('/exams','POST',{variant:1,mode:'exam'},token)).data;
@@ -45,3 +45,4 @@ test('Cloudflare runtime: D1 init, duplicate email, training, exam protection, r
   assert.equal((await request('/auth/login','POST',{email:registration.email,password:'replacement-password-123'})).status,200);
  }finally{await mf.dispose();}
 });
+

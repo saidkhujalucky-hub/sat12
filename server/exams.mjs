@@ -9,7 +9,7 @@ export const moduleRefs = (a,index=a.index) => {
   return variantOf(a).sections[section][index%2?a.routing[section]:'mixed'];
 };
 export function examService(store,questions,bill) {
-  async function check(user,variant) { if(!Number.isInteger(variant)||!catalog.variants.some(v=>v.id===variant))fault(400,'INVALID_VARIANT');if(variant!==1){if(user.guest)fault(401,'LOGIN_REQUIRED');await bill.requirePremium(user.id);} }
+  async function check(user,variant) { if(!Number.isInteger(variant)||!catalog.variants.some(v=>v.id===variant))fault(400,'INVALID_VARIANT'); }
   async function create(user,variant,mode='exam') {
     if(!['exam','training'].includes(mode))fault(400,'INVALID_MODE');
     await check(user,variant);
@@ -95,3 +95,4 @@ export function examService(store,questions,bill) {
   return {check,create,get,update,finish,resume,question,ensureEvents,summary};
 }
 import { lessonForRef as questionsLesson } from './questions.mjs';
+
