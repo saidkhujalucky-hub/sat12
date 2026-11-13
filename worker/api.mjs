@@ -9,7 +9,7 @@ import { promisify } from 'node:util';
 import { openStore, insertOnce } from './store.mjs';
 import { billing } from '../server/billing.mjs';
 import { lessons, lessonMap } from '../server/content.mjs';
-import { catalog, refs, lessonForRef, questionService, correct, fault as fail } from './questions.mjs';
+import { catalog, legacyCatalog, refs, lessonForRef, questionService, correct, fault as fail } from './questions.mjs';
 import { examService } from './exams.mjs';
 
 const json=(res,status,data)=>{res.status=status;res.headers['Content-Type']='application/json; charset=utf-8';res.headers['Cache-Control']='no-store';res.data=data;};
@@ -90,7 +90,7 @@ async function api(req,res,path){
   if(path==='/payments/payme'&&method==='POST')return json(res,200,await bill.rpc(d,req.headers.authorization));
   if(path==='/catalog'&&method==='GET'){
     const premium=true;
-    return json(res,200,{modules:catalog.modules,variants:catalog.variants.map(v=>({id:v.id,locked:v.id!==1&&!premium,...(v.id===1||premium?{sections:v.sections}:{})}))});
+    return json(res,200,{modules:catalog.modules,legacyVariants:legacyCatalog.variants,variants:catalog.variants.map(v=>({id:v.id,locked:v.id!==1&&!premium,...(v.id===1||premium?{sections:v.sections}:{})}))});
   }
   if(path==='/guest'&&method==='POST'){
     limit('guest:'+req.ip,30);

@@ -1,7 +1,9 @@
 import catalogData from './official-variants.json';
+import legacyData from './legacy-variants.json';
 import { lessonMap, topicLessons } from '../server/content.mjs';
 
 export const catalog = catalogData;
+export const legacyCatalog = legacyData;
 export const refs = new Map();
 for (const variant of catalog.variants) for (const [section, branches] of Object.entries(variant.sections)) {
   for (const branch of Object.values(branches)) for (const q of branch) refs.set(q.id, { ...q, section });

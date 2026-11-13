@@ -13,7 +13,7 @@ function persist(){if(!active)return;remember();if(active.stage!=='module')retur
 function flushSave(){clearTimeout(saveTimer);const snapshot=pendingSnapshot;pendingSnapshot=null;if(!snapshot)return saveChain;saveChain=saveChain.catch(()=>{}).then(()=>SATClient.api('/exams/'+snapshot.id+'/state','PUT',snapshot)).catch(error=>{if(!pendingSnapshot&&active?.id===snapshot.id&&active?.index===snapshot.index)pendingSnapshot=snapshot;throw error;});return saveChain;}
 function useAttempt(value){active=value;current=value.current||0;SATOfficial.setContext(value.id,value.stage==='done');remember();}
 function model(){return catalog.modules[active.index];}
-function variant(){return catalog.variants.find(item=>item.id===active.test);}
+function variant(){return (active.catalogVersion===2?catalog.variants:catalog.legacyVariants).find(item=>item.id===active.test);}
 function moduleRefs(index=active.index){const section=catalog.modules[index].section;return variant().sections[section][index%2?active.routing[section]:'mixed'];}
 function questionRef(){return moduleRefs()[current];}
 function questionKey(){return questionRef().id;}

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { lessonMap, topicLessons } from './content.mjs';
 
 export const catalog = JSON.parse(readFileSync(new URL('./private/official-variants.json', import.meta.url)));
+export const legacyCatalog = JSON.parse(readFileSync(new URL('./private/legacy-variants.json', import.meta.url)));
 export const refs = new Map();
 for (const variant of catalog.variants) for (const [section, branches] of Object.entries(variant.sections)) {
   for (const branch of Object.values(branches)) for (const q of branch) refs.set(q.id, { ...q, section });

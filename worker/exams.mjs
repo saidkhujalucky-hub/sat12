@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import { catalog, correct, fault, numberValue } from './questions.mjs';
+import { catalog, legacyCatalog, correct, fault, numberValue } from './questions.mjs';
 import { insertOnce } from '../worker/store.mjs';
 
 const DAY=86400000;
-export const variantOf = a => catalog.variants.find(v=>v.id===a.test);
+export const variantOf = a => (a.catalogVersion === 2 ? catalog : legacyCatalog).variants.find(v=>v.id===a.test);
 export const moduleRefs = (a,index=a.index) => {
   const section=catalog.modules[index].section;
   return variantOf(a).sections[section][index%2?a.routing[section]:'mixed'];
@@ -15,7 +15,7 @@ export function examService(store,questions,bill) {
     await check(user,variant);
     const existing=(await store.list('exams',{userId:user.id})).filter(a=>a.test===variant&&(a.mode||'exam')===mode&&a.stage!=='done').sort((a,b)=>b.startedAt-a.startedAt)[0];
     if(existing)return existing;
-    const a={id:randomUUID(),userId:user.id,test:variant,mode,stage:'module',index:0,answers:{},flags:{},crossed:{},routing:{rw:null,math:null},grades:[],startedAt:Date.now(),endsAt:Date.now()+catalog.modules[0].seconds*1000,breakEnd:null,current:0,updatedAt:Date.now()};
+    const a={id:randomUUID(),userId:user.id,test:variant,catalogVersion:2,mode,stage:'module',index:0,answers:{},flags:{},crossed:{},routing:{rw:null,math:null},grades:[],startedAt:Date.now(),endsAt:Date.now()+catalog.modules[0].seconds*1000,breakEnd:null,current:0,updatedAt:Date.now()};
     await store.insert('exams',a);return a;
   }
   async function get(user,id) {
