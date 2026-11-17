@@ -42,6 +42,19 @@ test('all materials are available without a subscription',async()=>{
  assert.equal((await req('/billing/orders','POST',{idempotencyKey:'no-payment-order'},guest.token)).status,403);
 });
 
+test('light catalog and saved attempts require one response and keep account data private',async()=>{
+ const summary=await ok('/catalog/summary','GET',undefined,'');
+ assert.equal(summary.variants.length,10);assert.ok(summary.variants.every(v=>!v.sections));
+ const variant=await ok('/catalog/2','GET',undefined,'');
+ assert.equal(variant.variants.length,1);assert.equal(variant.legacyVariants.length,1);
+ assert.deepEqual(variant.variants[0].sections,catalog.variants[1].sections);
+ assert.equal((await req('/catalog/999','GET',undefined,'')).status,404);
+ assert.equal((await req('/exams','GET',undefined,'')).status,401);
+ const latest=await ok('/exams');assert.ok(latest.length>0);
+ assert.ok(latest.every(a=>a.userId===uid));assert.equal(new Set(latest.map(a=>a.test)).size,latest.length);
+ const guest=await ok('/guest','POST',{},'');assert.deepEqual(await ok('/exams','GET',undefined,guest.token),[]);
+});
+
 test('manual orders cannot self-activate; owner approval is idempotent; cross-user orders stay private',async()=>{
  const bill=billing(store,{PAYMENT_MODE:'manual'}), u=await store.get('users',uid);const first=await bill.order(u,'en','initial-order-0001');assert.equal(first.price,19000);assert.equal(first.days,30);assert.equal(first.state,0);
  assert.equal((await bill.order(u,'en','initial-order-0001')).id,first.id);

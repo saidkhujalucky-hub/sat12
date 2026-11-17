@@ -17,9 +17,15 @@ test('Cloudflare runtime: D1 init, duplicate email, training, exam protection, r
   assert.equal((await request('/auth/register','POST',registration)).status,409);
   const ls=await request('/lessons','GET',undefined,token);assert.equal(ls.data.length,34);assert.equal(ls.data.filter(l=>!l.locked).length,ls.data.length);assert.ok(ls.data.every(l=>!l.practice));
   const catalog=(await request('/catalog','GET',undefined,token)).data;
+  const summary=await request('/catalog/summary');assert.equal(summary.status,200);assert.ok(JSON.stringify(summary.data).length<1024);assert.ok(summary.data.variants.every(v=>!v.sections));
+  const selected=await request('/catalog/1');assert.equal(selected.status,200);assert.equal(selected.data.variants.length,1);assert.deepEqual(selected.data.variants[0],catalog.variants[0]);assert.deepEqual(selected.data.legacyVariants,[catalog.legacyVariants[0]]);
+  assert.equal((await request('/catalog/999')).status,404);
+  assert.equal((await request('/exams')).status,401);
   const qid=catalog.variants[0].sections.rw.mixed[0].id;
   const exam=(await request('/exams','POST',{variant:1,mode:'exam'},token)).data;
   const training=(await request('/exams','POST',{variant:1,mode:'training'},token)).data;assert.notEqual(exam.id,training.id);
+  const latest=await request('/exams','GET',undefined,token);assert.equal(latest.status,200);assert.equal(latest.data.length,1);assert.equal(latest.data[0].id,training.id);
+  const guest=(await request('/guest','POST',{})).data;assert.deepEqual((await request('/exams','GET',undefined,guest.token)).data,[]);
   assert.equal((await request('/translations/exams/'+exam.id+'/'+qid,'POST',{lang:'ru'},token)).status,403);
   const q=await request('/exams/'+training.id+'/question/'+qid,'GET',undefined,token);assert.equal(q.status,200);assert.equal(q.data.answers,undefined);
   assert.equal((await request('/translations/exams/'+training.id+'/'+qid,'POST',{lang:'ru',explanation:true},token)).status,403);

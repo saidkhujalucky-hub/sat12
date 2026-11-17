@@ -3,6 +3,23 @@ import assert from 'node:assert/strict';
 import {catalog,legacyCatalog} from '../server/questions.mjs';
 import {moduleRefs} from '../server/exams.mjs';
 import {readFileSync} from 'node:fs';
+import {catalogView} from '../server/catalog.mjs';
+
+test('home catalog is small and selected variants preserve both generations of attempts',()=>{
+ const full=catalogView(catalog,legacyCatalog),summary=catalogView(catalog,legacyCatalog,'summary');
+ assert.equal(summary.variants.length,10);
+ assert.ok(summary.variants.every(v=>!v.locked&&!v.sections));
+ assert.deepEqual(summary.modules,full.modules);
+ assert.deepEqual(summary.legacyVariants,[]);
+ assert.ok(Buffer.byteLength(JSON.stringify(summary))<1024);
+ assert.ok(JSON.stringify(summary).length<JSON.stringify(full).length/100);
+ for(const variant of catalog.variants){
+  const selected=catalogView(catalog,legacyCatalog,String(variant.id));
+  assert.deepEqual(selected.variants,[full.variants.find(v=>v.id===variant.id)]);
+  assert.deepEqual(selected.legacyVariants,[legacyCatalog.variants.find(v=>v.id===variant.id)]);
+ }
+ assert.equal(catalogView(catalog,legacyCatalog,'999'),null);
+});
 
 test('balanced routes preserve question pool, domain and difficulty counts',()=>{
  const collect=c=>c.variants.flatMap(v=>Object.values(v.sections).flatMap(b=>Object.values(b).flat()));

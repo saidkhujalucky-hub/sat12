@@ -7,7 +7,7 @@ function a(e,t){return n(e)||r(e,t)||o(e,t)||i()}function o(e,n){if(e){if(typeof
 
 (function(root){
 'use strict';
-const memory=new Map(),pending=new Map();
+const memory=new Map(),pending=new Map(),htmlCache=new Map();
 let context=null;
 function setContext(id,review=false){const key=id+':'+review;if(context?.key!==key){memory.clear();pending.clear();}context={id,review,key};}
 async function load(id){
@@ -21,8 +21,10 @@ async function load(id){
  try{return await task;}finally{pending.delete(key);}
 }
 function html(source){
+ const key=String(source||'');
+ if(htmlCache.has(key))return htmlCache.get(key);
  const config={USE_PROFILES:{html:true,svg:true,mathMl:true},ADD_TAGS:['mfenced'],ADD_ATTR:['open','close','separators'],FORBID_TAGS:['style']};
- const doc=new DOMParser().parseFromString(root.DOMPurify.sanitize(String(source||''),config),'text/html');
+ const doc=new DOMParser().parseFromString(root.DOMPurify.sanitize(key,config),'text/html');
  for(const fenced of [...doc.body.querySelectorAll('mfenced')]){
   const ns='http://www.w3.org/1998/Math/MathML',row=doc.createElementNS(ns,'mrow'),children=[...fenced.children],separators=(fenced.getAttribute('separators')??',').replace(/\s/g,'');
   const operator=value=>{const mo=doc.createElementNS(ns,'mo');mo.textContent=value;return mo;};
@@ -31,7 +33,10 @@ function html(source){
   row.append(operator(fenced.getAttribute('close')??')'));fenced.replaceWith(row);
  }
  for(const image of doc.body.querySelectorAll('img')){image.setAttribute('loading','lazy');image.setAttribute('referrerpolicy','no-referrer');}
- return root.DOMPurify.sanitize(doc.body.innerHTML,config);
+ const clean=root.DOMPurify.sanitize(doc.body.innerHTML,config);
+ if(htmlCache.size>=150)htmlCache.delete(htmlCache.keys().next().value);
+ htmlCache.set(key,clean);
+ return clean;
 }
 const api={load,peek:id=>memory.get(id),setContext,html};
 root.SATOfficial=api;

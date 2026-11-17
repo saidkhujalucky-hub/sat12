@@ -11,6 +11,7 @@ import { billing } from './billing.mjs';
 import { lessons, lessonMap } from './content.mjs';
 import { catalog, legacyCatalog, refs, lessonForRef, questionService, correct, fault as fail } from './questions.mjs';
 import { examService } from './exams.mjs';
+import { catalogView } from './catalog.mjs';
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),store=await openStore(),bill=billing(store),questions=questionService(process.env,store),exams=examService(store,questions,bill);
 const day=86400000,scrypt=promisify(scryptCb),hash=x=>createHash('sha256').update(x).digest('hex');
@@ -86,9 +87,11 @@ async function api(req,res,path){
   if(path==='/health')return json(res,200,{ok:true,payments:bill.config().mode,database:store.kind});
   if(path==='/billing/config'&&method==='GET')return json(res,200,bill.config());
   if(path==='/payments/payme'&&method==='POST')return json(res,200,await bill.rpc(d,req.headers.authorization));
-  if(path==='/catalog'&&method==='GET'){
-    const premium=true;
-    return json(res,200,{modules:catalog.modules,legacyVariants:legacyCatalog.variants,variants:catalog.variants.map(v=>({id:v.id,locked:v.id!==1&&!premium,...(v.id===1||premium?{sections:v.sections}:{})}))});
+  const cm=path.match(/^\/catalog(?:\/(summary|\d+))?$/);
+  if(cm&&method==='GET'){
+    const data=catalogView(catalog,legacyCatalog,cm[1]);
+    if(!data)fail(404,'INVALID_VARIANT');
+    return json(res,200,data);
   }
   if(path==='/guest'&&method==='POST'){
     limit('guest:'+req.socket.remoteAddress,30);
@@ -140,6 +143,7 @@ async function api(req,res,path){
   const om=path.match(/^\/billing\/orders\/([\w-]+)(?:\/(demo))?$/);
   if(om){realUser(u);if(om[2]&&method==='POST')return json(res,200,await bill.demo(om[1],u.id,d.success===true));if(method!=='GET')fail(405,'METHOD_NOT_ALLOWED');const o=await store.get('orders',om[1]);if(!o||o.userId!==u.id)fail(404,'ORDER_NOT_FOUND');return json(res,200,{...bill.view(o),subscription:await bill.subscription(u.id)});}
   if(path==='/exams'&&method==='POST')return json(res,201,await exams.create(u,Number(d.variant),d.mode||'exam'));
+  if(path==='/exams'&&method==='GET')return json(res,200,await exams.latest(u));
   const em=path.match(/^\/exams\/([\w-]+)(?:\/(state|finish|continue|question\/([\w-]+)))?$/);
   if(em){
     if(!em[2]&&method==='GET')return json(res,200,await exams.get(u,em[1]));

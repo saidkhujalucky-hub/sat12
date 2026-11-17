@@ -5,6 +5,16 @@ const loc=(ru,uz,en)=>({ru,uz,en}[SATClient.lang()]||en);
 const KEY=()=> 'sat_official_interactive_v2_'+(localStorage.getItem('sat_session')?localStorage.getItem('sat_user_id'):localStorage.getItem('sat_guest_id')||'guest');
 const state={selectedMode:sessionStorage.getItem('sat_mode')||'exam',attempt:null,selectedVariant:1,showTimer:true,view:'question',modal:null,busy:false,timerFailed:false,reviewOpen:null};
 let catalog,active=null,current=0,toastTimer,renderId=0,questionError='';
+const variantLoads=new Map();
+async function loadVariant(id){
+ const selected=catalog.variants.find(v=>v.id===id);
+ if(selected?.sections)return;
+ if(!variantLoads.has(id))variantLoads.set(id,SATClient.api('/catalog/'+id).then(data=>{
+  Object.assign(selected,data.variants[0]);
+  catalog.legacyVariants.push(...data.legacyVariants);
+ }).finally(()=>variantLoads.delete(id)));
+ return variantLoads.get(id);
+}
 function notice(message){const el=$('#toast');el.textContent=message;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),4500);}
 function saved(){try{const all=JSON.parse(localStorage.getItem(KEY())||'{}');return Object.fromEntries(Object.entries(all).filter(([,a])=>a.id));}catch{return {};}}
 let saveTimer,pendingSnapshot,saveChain=Promise.resolve();
@@ -37,9 +47,9 @@ function updateQuestion(){const question=SATOfficial.peek(questionKey()),panel=$
 async function hydrate(token){if(questionError)return;const ref=questionRef();if(SATOfficial.peek(ref.id)){prefetch();return;}try{await SATOfficial.load(ref.id);if(token===renderId&&active?.stage==='module'){questionError='';updateQuestion();prefetch();}}catch(error){if(token===renderId&&active?.stage==='module'){questionError=SATI18N.error(error)||'Проверь подключение к интернету.';updateQuestion();}}}
 function prefetch(){if(!active||active.stage!=='module')return;for(const ref of moduleRefs().slice(current+1,current+3))SATOfficial.load(ref.id).catch(()=>{});}
 async function start(id){if(state.busy)return;state.busy=true;state.selectedVariant=id;
- try{await flushSave();await SATClient.ensureGuest();catalog=await SATClient.api('/catalog');const chosen=catalog.variants.find(v=>v.id===id);useAttempt(await SATClient.api('/exams','POST',{variant:id,mode:state.selectedMode}));state.modal=null;state.timerFailed=false;questionError='';}
+ try{await flushSave();await Promise.all([SATClient.ensureGuest(),loadVariant(id)]);useAttempt(await SATClient.api('/exams','POST',{variant:id,mode:state.selectedMode}));state.modal=null;state.timerFailed=false;questionError='';}
  catch(e){notice(SATI18N.error(e));}finally{state.busy=false;render();}}
-async function resumeAttempt(id){await SATClient.ensureGuest();try{await flushSave();}catch(e){if(!['MODULE_EXPIRED','STALE_MODULE'].includes(e.message))throw e;}useAttempt(await SATClient.api('/exams/'+id));state.timerFailed=false;questionError='';render();}
+async function resumeAttempt(id){await SATClient.ensureGuest();try{await flushSave();}catch(e){if(!['MODULE_EXPIRED','STALE_MODULE'].includes(e.message))throw e;}const attempt=await SATClient.api('/exams/'+id);await loadVariant(attempt.test);useAttempt(attempt);state.timerFailed=false;questionError='';render();}
 async function eachLimit(items,limit,operation){let next=0;await Promise.all(Array.from({length:Math.min(limit,items.length)},async()=>{while(next<items.length){const item=items[next++];await operation(item);}}));}
 async function endModule(){if(!active||active.stage!=='module'||state.busy)return;state.busy=true;state.modal=null;render();try{try{await flushSave();}catch(e){if(!['MODULE_EXPIRED','STALE_MODULE'].includes(e.message))throw e;}useAttempt(await SATClient.api('/exams/'+active.id+'/finish','POST',{index:active.index}));calcState.open=false;state.timerFailed=false;questionError='';}catch(e){state.timerFailed=true;notice(SATI18N.error(e));}finally{state.busy=false;render();}}
 async function resumeModule(){if(!active||active.stage!=='break'||state.busy)return;state.busy=true;try{useAttempt(await SATClient.api('/exams/'+active.id+'/continue','POST',{}));state.timerFailed=false;questionError='';}catch(e){state.timerFailed=true;notice(SATI18N.error(e));}finally{state.busy=false;render();}}
@@ -128,12 +138,12 @@ function syncCalculator(){
 function toggleCalculator(){calcState.open=!calcState.open;syncCalculator();if(calcState.open)calcWindow?.querySelector('#calc-input').focus();}
 window.addEventListener('resize',clampCalculator);
 
-async function bootOfficial(){try{catalog=await SATClient.api('/catalog');await restoreLegacy();const attempt=new URLSearchParams(location.search).get('attempt');if(attempt)await resumeAttempt(attempt);else render();}catch(e){$('#app').innerHTML=`<div class="app-shell"><section class="hub-card"><h2>${SATI18N.error(e)}</h2><p>Проверь подключение к серверу и повтори загрузку.</p><a class="btn primary" href="./index.html">Повторить</a></section></div>`;}}
+async function bootOfficial(){try{[catalog]=await Promise.all([SATClient.api('/catalog/summary'),restoreLegacy()]);const attempt=new URLSearchParams(location.search).get('attempt');if(attempt)await resumeAttempt(attempt);else render();}catch(e){$('#app').innerHTML=`<div class="app-shell"><section class="hub-card"><h2>${SATI18N.error(e)}</h2><p>Проверь подключение к серверу и повтори загрузку.</p><a class="btn primary" href="./index.html">Повторить</a></section></div>`;}}
 bootOfficial();
 
 
 
-async function restoreLegacy(){if(!localStorage.getItem('sat_session'))return;try{const data=await SATClient.api('/progress'),all=saved();for(const h of data.history){if(catalog.variants.find(v=>v.id===h.variant)?.locked)continue;try{const a=await SATClient.api('/exams/'+h.id);if(!all[a.test]||a.startedAt>all[a.test].startedAt)all[a.test]=a;}catch{}}localStorage.setItem(KEY(),JSON.stringify(all));}catch{}}
+async function restoreLegacy(){if(!localStorage.getItem('sat_session'))return;try{const attempts=await SATClient.api('/exams'),all=saved();for(const a of attempts){if(!all[a.test]||a.startedAt>=all[a.test].startedAt)all[a.test]=a;}localStorage.setItem(KEY(),JSON.stringify(all));}catch{}}
 // Reporting is available beside a question; the source question remains unchanged.
 new MutationObserver(()=>{const panel=document.querySelector('.question-panel');if(panel&&!panel.querySelector('[data-legacy-report]')){const b=document.createElement('button');b.className='linklike';b.dataset.legacyReport='1';b.textContent=SATI18N.t('report');b.onclick=()=>{if(active)SATReport('question',questionKey());};panel.append(b);}}).observe(document.querySelector('#app'),{childList:true,subtree:true});
 

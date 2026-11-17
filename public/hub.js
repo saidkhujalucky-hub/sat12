@@ -32,7 +32,7 @@ function drillView(){
  if(!q){root.innerHTML=`${header(t('saved'))}<section class="hub-card"><h2>${loc('Практика завершена','Mashq tugadi','Practice complete')}</h2><p>${loc('Результаты сохранены. Проверь расписание повторения.','Natijalar saqlandi. Takrorlash jadvalini tekshiring.','Results saved. Check your review schedule.')}</p>${link('#review',t('repeat'))} ${link('#drill/'+drill.skill,t('practice'),'secondary')}</section>${support()}`;return;}
  root.innerHTML=`${header(esc(title(drill.skill)))}<article class="hub-card"><div class="eyebrow">${position+1} / ${drill.questions.length} · ${loc('ТРЕНИРОВКА','MASHQ','TRAINING')}</div>${q.passage?`<div class="practice-text original-rich" lang="en">${SATOfficial.html(q.passage)}</div>`:''}<div class="practice-text original-rich" lang="en">${SATOfficial.html(q.prompt)}</div>${SATTranslate.button('/translations/drills/'+drill.id+'/'+q.id)}${q.type==='mcq'?`<div class="drill-options" lang="en">${q.options.map(o=>`<label><input type="radio" name="answer" value="${o.letter}" ${checked?'disabled':''} ${checked?.value===o.letter?'checked':''}><strong>${o.letter}.</strong><span class="original-rich">${SATOfficial.html(o.html)}</span></label>`).join('')}</div>`:`<label>${loc('Твой ответ','Javobingiz','Your answer')}<input name="numeric-answer" inputmode="decimal" maxlength="24" ${checked?'disabled':''} value="${esc(checked?.value||'')}"></label>`}<div class="main-actions">${checked?`<button class="btn primary" data-action="drill-next">${t('next')}</button>`:`<button class="btn primary" data-action="drill-check">${t('check')}</button>`}</div><p id="drill-error" role="alert"></p>${checked?`<section class="review-extra"><h2 class="${checked.correct?'correct-tag':'incorrect-tag'}">${t(checked.correct?'correct':'wrong')}</h2><p>${t('answer')}: ${esc(checked.value)} · ${t('right')}: ${esc(checked.question.answers.join(' / '))}</p>${checked.question.method?`<h3>${loc('Правило по теме','Mavzu qoidasi','Topic rule')}</h3>${list(pick(checked.question.method))}`:''}<h3>${loc('Исходное объяснение на английском','Ingliz tilidagi asl izoh','Original explanation in English')}</h3><div class="original-rich" lang="en">${SATOfficial.html(checked.question.explanation)}</div>${SATTranslate.button('/translations/drills/'+drill.id+'/'+q.id,true)}${!checked.correct?reasons(checked.eventId):''}${link('#lesson/'+q.lessonId,t('lesson'),'secondary')}</section>`:''}<p class="footnote">College Board · ${esc(q.sourceId)}</p>${report('question',q.id)}</article>${support()}`;
 }
-async function route(){
+async function route({refreshUser=true}={}){
  const token=++routeToken;clearTimeout(pollTimer);
  root.innerHTML=`<div class="boot"><span class="spinner"></span>${t('loading')}</div>`;
  try{
@@ -41,7 +41,7 @@ async function route(){
   if(await SATAccount.render(page,id,user,features))return;
   if(page==='premium'){location.hash='learning';return;}
   if(!user){if(!['login','register'].includes(page))sessionStorage.setItem('sat_after_auth',location.hash);auth(page==='register');return;}
-  user=await api('/auth/me');lessons=await api('/lessons');data=await api('/progress');if(token!==routeToken)return;
+  const loaded=await Promise.all([refreshUser?api('/auth/me'):user,api('/lessons'),api('/progress')]);if(token!==routeToken)return;[user,lessons,data]=loaded;
   if(page==='learning')root.innerHTML=learning();
   else if(page==='review')root.innerHTML=review();
   else if(page==='progress')root.innerHTML=progress();
@@ -86,6 +86,6 @@ root.addEventListener('click',async e=>{
  }catch(err){const el=$('#drill-error')||$('#billing-error');if(el)el.textContent=error(err);else errorState(err);}finally{busy=false;b.disabled=false;}
 });
 window.addEventListener('hashchange',route);
-async function boot(){try{config=await api('/billing/config');features=await api('/features');if(localStorage.getItem('sat_session')){try{user=await api('/auth/me');if(user.guest)user=null;}catch(e){if(e.message!=='LOGIN_REQUIRED')throw e;user=null;}}await route();}catch(e){errorState(e);}}
+async function boot(){try{[config,features,user]=await Promise.all([api('/billing/config'),api('/features'),(async()=>{if(!localStorage.getItem('sat_session'))return null;try{const current=await api('/auth/me');return current.guest?null:current;}catch(e){if(e.message!=='LOGIN_REQUIRED')throw e;return null;}})()]);await route({refreshUser:false});}catch(e){errorState(e);}}
 boot();
 
